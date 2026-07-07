@@ -8,7 +8,7 @@
 
 ## The problem
 
-Two simultaneous debit requests against the same ₹1,000 account, naively implemented: both read the balance, both see "sufficient funds," both succeed. Result: -₹200. This race condition compounds under concurrency  at 200 simultaneous users, the failure window opens hundreds of times per second. Row-level database locking fixes correctness but kills throughput under load.
+Two simultaneous debit requests against the same ₹1,000 account, naively implemented: both read the balance, both see "sufficient funds," both succeed. Result: -₹200. This race condition compounds under concurrency at 200 simultaneous users, the failure window opens hundreds of times per second. Row-level database locking fixes correctness but kills throughput under load.
 
 SurgeFlow solves both problems at once with a three-layer architecture: Java 21 Virtual Threads for ingestion, Redis atomic operations for race-free balance validation, and Kafka for async, non-blocking persistence.
 
@@ -16,7 +16,7 @@ SurgeFlow solves both problems at once with a three-layer architecture: Java 21 
 
 ![SurgeFlow architecture](./architecture.png)
 
-Redis serializes concurrent balance mutations at the engine level - no application-side locking. Once approved, the transaction is published to Kafka and the API returns immediately; a background consumer batch-writes to PostgreSQL, decoupling customer-facing latency from disk I/O.
+Redis serializes concurrent balance mutations at the engine level — no application-side locking. Once approved, the transaction is published to Kafka and the API returns immediately; a background consumer batch-writes to PostgreSQL, decoupling customer-facing latency from disk I/O.
 
 ## Verified performance
 
@@ -32,15 +32,15 @@ Measured with k6 against the live production deployment (Azure B2as v2, 2 vCPU, 
 | Total requests | 134,857 |
 | Checks passed | 100% (94,452 / 94,452) |
 
-Unit tests: 4/4 passing (JUnit 5 + Mockito) — [`load-tests/unit-test-results.txt`](./load-tests/unit-test-results.txt).
+Unit tests: 4/4 passing (JUnit 5 + Mockito) - [`load-tests/unit-test-results.txt`](./load-tests/unit-test-results.txt).
 
 ## Tech stack
 
 | Layer | Technology |
 |---|---|
-| Runtime | Java 21 - Virtual Threads (Project Loom) |
+| Runtime | Java 21 — Virtual Threads (Project Loom) |
 | Framework | Spring Boot 3.4 |
-| Atomic cache | Redis 7.2 |
+| Atomic cache | Redis 7.2 (AOF persistence enabled) |
 | Event streaming | Apache Kafka 7.5 (6 partitions) |
 | Durable storage | PostgreSQL 16 |
 | Observability | OpenTelemetry + Jaeger |
@@ -70,9 +70,24 @@ mvn spring-boot:run -Dspring-boot.run.jvmArguments="-Duser.timezone=UTC"
 k6 run load-tests/surgeflow-load-test.js
 ```
 
-## What I'd do differently at larger scale
+## Known limitations and what I'd fix at scale
 
-This runs on a single 2-vCPU VM by design - the goal was proving the architecture under real concurrency, not provisioning production capacity. Scaling further means horizontally scaling the Spring Boot layer behind a load balancer, moving to a managed multi-broker Kafka cluster, and sharding Redis past single-instance capacity. None of the core design changes - atomic Redis ops, async Kafka writes, and a stateless API layer all scale by adding nodes, not by rearchitecting.
+This is a single-node demo deployment by design - the goal was proving the architecture under real concurrency, not provisioning production capacity.
+
+**Current known limitations:**
+- No authentication on endpoints - acceptable for a demo, not for production
+- Account must be explicitly seeded before transactions; unknown accounts are rejected
+- Kafka publish failures trigger a Redis compensation rollback but no dead-letter queue for retry
+- Single Redis instance - no clustering or replication
+
+**At larger scale:**
+- Horizontally scale the Spring Boot layer behind a load balancer (stateless by design, so no rearchitecting needed)
+- Move to a managed multi-broker Kafka cluster (Confluent Cloud or MSK)
+- Shard Redis past single-instance capacity using Redis Cluster
+- Add JWT authentication and a proper account creation flow
+- Introduce a dead-letter topic for failed Kafka events with a retry consumer
+
+The core design holds at scale - atomic Redis ops, async Kafka writes, and a stateless API layer all scale by adding nodes, not by rearchitecting.
 
 ---
 
