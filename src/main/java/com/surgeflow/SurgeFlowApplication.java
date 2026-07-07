@@ -16,7 +16,7 @@ public class SurgeFlowApplication {
                 ╔══════════════════════════════════════════════╗
                 ║         SurgeFlow Engine Started             ║
                 ║  Java 21 Virtual Threads | Redis | Kafka     ║
-                ║  50K+ RPS | Sub-2ms P95 | Zero Deadlocks    ║
+                ║  749 RPS · P95 97ms · 0% errors (measured)  ║
                 ╚══════════════════════════════════════════════╝
                 """);
     }
