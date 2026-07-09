@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16
@@ -14,6 +12,26 @@ services:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U surgeflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.2
+    container_name: surgeflow-redis
+    ports:
+      - "6379:6379"
+    # AOF persistence: every write is fsynced — survives container restarts
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -55,3 +73,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
