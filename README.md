@@ -92,3 +92,25 @@ The core design holds at scale - atomic Redis ops, async Kafka writes, and a sta
 ---
 
 Built by [Janani R](https://github.com/Janani0734)
+
+## Known Limitations & Design Decisions
+
+### No authentication on endpoints
+All API endpoints are publicly accessible without authentication — intentional for portfolio demonstration. Production would add Spring Security + JWT on transaction endpoints and remove the `/seed` endpoint entirely.
+
+### No dead-letter queue for Kafka failures
+If Redis approves a transaction but Kafka publish fails, the gap is logged explicitly as `KAFKA_SEND_FAILURE` with full context for manual reconciliation. Production would add a dead-letter topic and a replay job. Single-broker local Kafka makes a real DLT demonstration meaningless at this scale.
+
+### Redis as source of truth
+Balances live in Redis with AOF persistence. PostgreSQL holds the audit log. No reconciliation job exists to recompute Redis balances from PostgreSQL on cold start — a production system would either derive Redis from PostgreSQL on startup or maintain a balance column in PostgreSQL updated alongside every Redis write.
+
+## Known Limitations & Design Decisions
+
+### No authentication on endpoints
+All API endpoints are publicly accessible without authentication — intentional for portfolio demonstration. Production would add Spring Security + JWT on transaction endpoints and remove the `/seed` endpoint entirely.
+
+### No dead-letter queue for Kafka failures
+If Redis approves a transaction but Kafka publish fails, the gap is logged explicitly as `KAFKA_SEND_FAILURE` with full context for manual reconciliation. Production would add a dead-letter topic and a replay job. Single-broker local Kafka makes a real DLT demonstration meaningless at this scale.
+
+### Redis as source of truth
+Balances live in Redis with AOF persistence. PostgreSQL holds the audit log. No reconciliation job exists to recompute Redis balances from PostgreSQL on cold start — a production system would either derive Redis from PostgreSQL on startup or maintain a balance column in PostgreSQL updated alongside every Redis write.
