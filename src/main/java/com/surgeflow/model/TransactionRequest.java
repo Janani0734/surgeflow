@@ -20,7 +20,7 @@ public class TransactionRequest {
     private String accountId;
 
     @NotNull(message = "amount is required")
-    @Positive(message = "amount must be positive")
+    @Positive(message = "amount must be greater than zero")
     private BigDecimal amount;
 
     @NotNull(message = "type is required")
